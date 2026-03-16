@@ -1,10 +1,34 @@
+import os
 from fastapi import APIRouter, FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from app.core.response import create_response
 from app.modules.auth.router import router as auth_router
+from app.core.config import settings
 from app.modules.embeddings.router import router as embeddings_router
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Voice2Invoice API")
+
+if settings.ENVIRONMENT == "development":
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+else:
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
+
+
+origins = []
+if settings.CORS_ORIGINS:
+    origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins if origins else ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
