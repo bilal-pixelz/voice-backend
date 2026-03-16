@@ -5,10 +5,13 @@ class Token(BaseModel):
     token_type: str
 
 class UserBase(BaseModel):
+    phone_number: str | None = None
     email: EmailStr
 
 class UserCreate(UserBase):
     password: str
+    first_name: str
+    last_name: str | None = None
 
 class User(UserBase):
     id: int
@@ -17,4 +20,4 @@ class User(UserBase):
     hashed_password: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
