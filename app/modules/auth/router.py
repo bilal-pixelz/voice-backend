@@ -1,7 +1,4 @@
 from datetime import timedelta
-import secrets
-import hashlib
-import base64
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -54,28 +51,22 @@ async def login_for_access_token(
         message="Login successful",
     )
 
-
 @router.get("/google/login")
 async def google_login(request: Request):
     """
     Generate a Google login URL with PKCE and return it to the frontend.
     """
-    code_verifier = secrets.token_urlsafe(64)
-    request.session["code_verifier"] = code_verifier
-
-    code_challenge = (
-        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
-        .decode()
-        .replace("=", "")
-    )
-
     flow = get_google_auth_flow()
-    authorization_url, _ = flow.authorization_url(
+    authorization_url, state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
-        code_challenge=code_challenge,
-        code_challenge_method="S256",
     )
+    print("LOGIN HIT — state:", state)           # ← add this
+    print("LOGIN HIT — verifier:", flow.code_verifier)  
+
+    request.session["oauth_state"] = state
+    request.session["code_verifier"] = flow.code_verifier
+
     return create_response(
         success=True,
         data={"authorization_url": authorization_url},
@@ -83,19 +74,13 @@ async def google_login(request: Request):
     )
 
 
-@router.get("/google/callback")
-async def google_callback(request: Request, db: Session = Depends(get_db)):
-    """
-    Handle the callback from Google after the user has authenticated.
-    """
-    code_verifier = request.session.get("code_verifier")
-    if not code_verifier:
-        raise HTTPException(status_code=400, detail="Missing code_verifier from session")
-    flow = get_google_auth_flow()
-    flow.fetch_token(
-        authorization_response=str(request.url), code_verifier=code_verifier
-    )
-
+@router.post("/google/exchange")
+async def google_exchange(
+    payload: schemas.GoogleExchangeRequest,
+    db: Session = Depends(get_db)
+):
+    flow = get_google_auth_flow(state=payload.state)
+    flow.fetch_token(code=payload.code)
     credentials = flow.credentials
     user_info = get_user_info_from_google(credentials)
 
@@ -111,10 +96,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
             db, user_id=user.id, provider="google", provider_user_id=user_info["sub"]
         )
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data={"sub": user.email})
     return create_response(
         success=True,
         data={"access_token": access_token, "token_type": "bearer"},
