@@ -6,6 +6,7 @@ from app.modules.auth.router import router as auth_router
 from app.core.config import settings
 from app.modules.embeddings.router import router as embeddings_router
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI(title="Voice2Invoice API")
 
@@ -19,6 +20,12 @@ origins = []
 if settings.CORS_ORIGINS:
     origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 
+app.add_middleware(SessionMiddleware,
+    secret_key=settings.JWT_SECRET_KEY,
+    same_site="lax",
+    https_only=False,
+    max_age=3600)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins if origins else ["*"],
@@ -26,9 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from starlette.middleware.sessions import SessionMiddleware
-app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):

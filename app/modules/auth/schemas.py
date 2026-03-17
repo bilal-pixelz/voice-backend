@@ -21,3 +21,7 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
+
+class GoogleExchangeRequest(BaseModel):
+    code: str
+    state: str

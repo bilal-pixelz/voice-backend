@@ -1,5 +1,4 @@
 from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from app.core.config import settings
@@ -20,7 +19,7 @@ CLIENT_CONFIG = {
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
         "client_secret": settings.GOOGLE_CLIENT_SECRET,
-        "redirect_uris": ["http://localhost:8000/api/v1/auth/google/callback"],
+        "redirect_uris": settings.GOOGLE_LOGIN_REDIRECT_URI
     }
 }
 
