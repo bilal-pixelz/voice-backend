@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     CORS_ORIGINS: str = "http://localhost:3000"
-    GOOGLE_LOGIN_REDIRECT_URI: list = ["http://localhost:3000/google/callback"]
+    GOOGLE_FRONTEND_REDIRECT_URI: list = ["http://localhost:3000/google/callback"]
 
     class Config:
         env_file = ".env"

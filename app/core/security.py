@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.core.config import settings
 from passlib.context import CryptContext
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["sha256_crypt", "bcrypt"], deprecated="auto")
 
 SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"

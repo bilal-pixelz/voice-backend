@@ -24,7 +24,8 @@ app.add_middleware(SessionMiddleware,
     secret_key=settings.JWT_SECRET_KEY,
     same_site="lax",
     https_only=False,
-    max_age=3600)
+    max_age=3600
+    )
 
 app.add_middleware(
     CORSMiddleware,

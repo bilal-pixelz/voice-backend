@@ -25,3 +25,4 @@ class User(UserBase):
 class GoogleExchangeRequest(BaseModel):
     code: str
     state: str
+    code_verifier: str

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from logging import config
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -13,6 +14,7 @@ from app.core.security import (
 )
 from app.modules.auth.repository import UserRepo
 from app.modules.auth import schemas
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -61,15 +63,10 @@ async def google_login(request: Request):
         access_type="offline",
         include_granted_scopes="true",
     )
-    print("LOGIN HIT — state:", state)           # ← add this
-    print("LOGIN HIT — verifier:", flow.code_verifier)  
-
-    request.session["oauth_state"] = state
-    request.session["code_verifier"] = flow.code_verifier
-
+    
     return create_response(
         success=True,
-        data={"authorization_url": authorization_url},
+        data={"authorization_url": authorization_url, "state": state, "code_verifier": flow.code_verifier},
         message="Google login URL generated successfully",
     )
 
@@ -77,10 +74,14 @@ async def google_login(request: Request):
 @router.post("/google/exchange")
 async def google_exchange(
     payload: schemas.GoogleExchangeRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+
+    print("payload.state",payload.state)
     flow = get_google_auth_flow(state=payload.state)
+    flow.code_verifier = payload.code_verifier
     flow.fetch_token(code=payload.code)
+
     credentials = flow.credentials
     user_info = get_user_info_from_google(credentials)
 
