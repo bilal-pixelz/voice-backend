@@ -19,7 +19,7 @@ CLIENT_CONFIG = {
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
         "client_secret": settings.GOOGLE_CLIENT_SECRET,
-        "redirect_uris": settings.GOOGLE_LOGIN_REDIRECT_URI
+        "redirect_uris": settings.GOOGLE_FRONTEND_REDIRECT_URI
     }
 }
 
@@ -28,12 +28,15 @@ def get_google_auth_flow(state=None):
     """
     Returns a Google OAuth2 flow object.
     """
-    return Flow.from_client_config(
+    print('redirect_uri', CLIENT_CONFIG["web"]["redirect_uris"][0])
+    flow = Flow.from_client_config(
         client_config=CLIENT_CONFIG,
         scopes=SCOPES,
         state=state,
         redirect_uri=CLIENT_CONFIG["web"]["redirect_uris"][0],
     )
+
+    return flow
 
 
 def get_user_info_from_google(credentials):
