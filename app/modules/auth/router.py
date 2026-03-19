@@ -22,12 +22,23 @@ router = APIRouter()
 @router.post("/register")
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = UserRepo.get_user_by_email(db, email=user.email)
+
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     created_user = UserRepo.create_user(db=db, user=user)
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": created_user.email}, expires_delta=access_token_expires
+    )
+
     return create_response(
         success=True,
-        data=UserRepo.to_dict(created_user),
+        data={
+            "access_token": access_token,
+            "token_type": "bearer", 
+            "user": schemas.User.model_validate(user).model_dump()
+            },
         message="User created successfully",
     )
 
@@ -49,8 +60,11 @@ async def login_for_access_token(
     )
     return create_response(
         success=True,
-        data={"access_token": access_token, "token_type": "bearer"},
-        message="Login successful",
+        data={"access_token": access_token, 
+              "token_type": "bearer", 
+              "user": schemas.User.model_validate(user).model_dump()
+            },
+        message="User logged in successfully",
     )
 
 @router.get("/google/login")
@@ -76,8 +90,6 @@ async def google_exchange(
     payload: schemas.GoogleExchangeRequest,
     db: Session = Depends(get_db),
 ):
-
-    print("payload.state",payload.state)
     flow = get_google_auth_flow(state=payload.state)
     flow.code_verifier = payload.code_verifier
     flow.fetch_token(code=payload.code)
@@ -100,6 +112,10 @@ async def google_exchange(
     access_token = create_access_token(data={"sub": user.email})
     return create_response(
         success=True,
-        data={"access_token": access_token, "token_type": "bearer"},
+        data={
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": schemas.User.model_validate(user).model_dump()
+        },
         message="Login successful",
     )
