@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.base import BaseRepo
 from app.models.db import User, SocialAccount
 from app.modules.auth.schemas import UserCreate
-from app.core.security import get_password_hash
+from app.core.passwords import get_password_hash
 
 class UserRepo(BaseRepo):
     model = User

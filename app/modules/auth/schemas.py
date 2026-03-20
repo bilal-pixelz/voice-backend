@@ -8,6 +8,9 @@ class UserBase(BaseModel):
     phone_number: str | None = None
     email: EmailStr
 
+    class Config:
+        from_attributes = True
+
 class UserCreate(UserBase):
     password: str
     first_name: str
@@ -15,9 +18,10 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
+    first_name: str
+    last_name: str | None = None
     is_active: bool
     company_id: int | None
-    hashed_password: str
 
     class Config:
         from_attributes = True

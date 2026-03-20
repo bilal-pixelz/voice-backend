@@ -1,5 +1,4 @@
 from datetime import timedelta
-from logging import config
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -7,14 +6,15 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.google_auth import get_google_auth_flow, get_user_info_from_google
 from app.core.response import create_response
+from app.core.passwords import verify_password
 from app.core.security import (
+    blacklist_token,
     create_access_token,
-    verify_password,
+    get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from app.modules.auth.repository import UserRepo
 from app.modules.auth import schemas
-from app.core.config import settings
 
 router = APIRouter()
 
@@ -22,12 +22,23 @@ router = APIRouter()
 @router.post("/register")
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = UserRepo.get_user_by_email(db, email=user.email)
+
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     created_user = UserRepo.create_user(db=db, user=user)
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": created_user.email}, expires_delta=access_token_expires
+    )
+
     return create_response(
         success=True,
-        data=UserRepo.to_dict(created_user),
+        data={
+            "access_token": access_token,
+            "token_type": "bearer", 
+            "user": schemas.User.model_validate(user).model_dump()
+            },
         message="User created successfully",
     )
 
@@ -49,8 +60,11 @@ async def login_for_access_token(
     )
     return create_response(
         success=True,
-        data={"access_token": access_token, "token_type": "bearer"},
-        message="Login successful",
+        data={"access_token": access_token, 
+              "token_type": "bearer", 
+              "user": schemas.User.model_validate(user).model_dump()
+            },
+        message="User logged in successfully",
     )
 
 @router.get("/google/login")
@@ -76,8 +90,6 @@ async def google_exchange(
     payload: schemas.GoogleExchangeRequest,
     db: Session = Depends(get_db),
 ):
-
-    print("payload.state",payload.state)
     flow = get_google_auth_flow(state=payload.state)
     flow.code_verifier = payload.code_verifier
     flow.fetch_token(code=payload.code)
@@ -100,6 +112,20 @@ async def google_exchange(
     access_token = create_access_token(data={"sub": user.email})
     return create_response(
         success=True,
-        data={"access_token": access_token, "token_type": "bearer"},
+        data={
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": schemas.User.model_validate(user).model_dump()
+        },
         message="Login successful",
+    )
+
+@router.post("/logout")
+async def logout(request: Request, current_user: schemas.User = Depends(get_current_user)):
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    blacklist_token(token)
+    return create_response(
+        success=True,
+        data=None,
+        message="Logged out successfully",
     )

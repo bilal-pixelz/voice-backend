@@ -28,7 +28,6 @@ def get_google_auth_flow(state=None):
     """
     Returns a Google OAuth2 flow object.
     """
-    print('redirect_uri', CLIENT_CONFIG["web"]["redirect_uris"][0])
     flow = Flow.from_client_config(
         client_config=CLIENT_CONFIG,
         scopes=SCOPES,
